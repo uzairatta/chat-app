@@ -1,28 +1,4 @@
-import { useEffect, useState } from "react";
-import ChatRoom from "./components/ChatRoom";
-import "./App.css";
-import { io } from "socket.io-client";
-const SOCKET_URL = "https://chat-app-server-production-04a9.up.railway.app";
-
-let socket;
-
-function App() {
-  const [joined, setJoined] = useState(false);
-
-  // User Form Fields
-  const [username, setUsername] = useState("");
-  const [room, setRoom] = useState("");
-
-  useEffect(() => {
-    socket = io(SOCKET_URL);
-
-    socket.on("connect", () => {
-      console.log("Connected to server");
-    });
-
-    socket.on("disconnect", () => {
-      console.log("Disconnected from server");
-    })import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { Hash, Send, LogOut, User, MessageSquare } from 'lucide-react';
 
@@ -295,3 +271,4 @@ export default function App() {
     </div>
   );
 }
+
