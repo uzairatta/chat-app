@@ -71,15 +71,24 @@ export default function App() {
     joinRoom(newRoom, username);
   };
 
-  const handleSendMessage = (e) => {
-    e.preventDefault();
-    if (!messageText.trim()) return;
+ const handleSendMessage = (e) => {
+  e.preventDefault();
+  if (!messageText.trim()) return;
 
-    const messageData = {
-      username: username,
-      room: currentRoom,
-      message: messageText.trim()
-    };
+  const messageData = {
+    username: username,
+    room: currentRoom,
+    message: messageText.trim(),
+    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  };
+
+  socket.emit('send', messageData);
+  
+  // Add your own message to local state immediately
+  setMessages((prev) => [...prev, messageData]);
+  
+  setMessageText('');
+};
 
     socket.emit('send', messageData);
     setMessageText('');
