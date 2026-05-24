@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { Hash, Send, LogOut, User, MessageSquare } from 'lucide-react';
 
-// Connect to the Socket.io server
 const SOCKET_SERVER_URL = "https://chat-app-server-production-04a9.up.railway.app";
 const socket = io(SOCKET_SERVER_URL, { autoConnect: false });
 
@@ -17,39 +16,42 @@ export default function App() {
   
   const messagesEndRef = useRef(null);
 
-  // Connect and handle incoming messages
   useEffect(() => {
     socket.connect();
 
     socket.on('message', (msg) => {
-      // Expecting msg: { username, room, message, timestamp }
-      // If server doesn't provide a timestamp, we append one locally for the UI
-      const incomingMessage = {
+      setMessages((prev) => [...prev, {
         ...msg,
         timestamp: msg.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      
-      setMessages((prev) => [...prev, incomingMessage]);
+      }]);
+    });
+
+    // ✅ ADDED - handles previous messages when joining a room
+    socket.on('previousMessages', (msgs) => {
+      const formatted = msgs.map(m => ({
+        username: m.senderName,
+        message: m.message,
+        timestamp: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }));
+      setMessages(formatted);
     });
 
     return () => {
       socket.off('message');
+      socket.off('previousMessages');
       socket.disconnect();
     };
   }, []);
 
-  // Scroll to bottom whenever messages update
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Handle joining a room
   const joinRoom = (roomName, user) => {
     if (!user) return;
     socket.emit('join', { username: user, room: roomName });
   };
 
-  // Handle leaving a room
   const leaveRoom = (roomName, user) => {
     if (!user) return;
     socket.emit('leave', { username: user, room: roomName });
@@ -67,30 +69,25 @@ export default function App() {
     if (newRoom === currentRoom) return;
     leaveRoom(currentRoom, username);
     setCurrentRoom(newRoom);
-    setMessages([]); // Clear chat view for the new room
+    setMessages([]);
     joinRoom(newRoom, username);
   };
 
- const handleSendMessage = (e) => {
-  e.preventDefault();
-  if (!messageText.trim()) return;
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    if (!messageText.trim()) return;
 
-  const messageData = {
-    username: username,
-    room: currentRoom,
-    message: messageText.trim(),
-    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  };
-
-  socket.emit('send', messageData);
-  
-  // Add your own message to local state immediately
-  setMessages((prev) => [...prev, messageData]);
-  
-  setMessageText('');
-};
+    const messageData = {
+      username: username,
+      room: currentRoom,
+      message: messageText.trim(),
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
 
     socket.emit('send', messageData);
+
+    // Add own message to local state immediately
+    setMessages((prev) => [...prev, messageData]);
     setMessageText('');
   };
 
@@ -101,7 +98,6 @@ export default function App() {
     setMessages([]);
   };
 
-  // Login Screen UI
   if (!isLoggedIn) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-slate-50 font-sans antialiased">
@@ -143,19 +139,16 @@ export default function App() {
     );
   }
 
-  // Main Chat Interface UI
   return (
     <div className="flex h-screen w-screen bg-white font-sans antialiased text-slate-900 selection:bg-indigo-100">
       
-      {/* Sidebar (Channels List) */}
+      {/* Sidebar */}
       <div className="w-64 border-r border-slate-100 bg-slate-50/50 flex flex-col justify-between">
         <div>
-          {/* Header */}
           <div className="h-14 border-b border-slate-100 flex items-center px-4 font-bold tracking-tight text-slate-800 text-lg">
             Community Server
           </div>
           
-          {/* Channels Navigation */}
           <div className="p-3 space-y-1">
             <span className="block px-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">Text Channels</span>
             {CHANNELS.map((room) => {
@@ -178,7 +171,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* User Footer Profile */}
         <div className="p-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
           <div className="flex items-center space-x-2 min-w-0">
             <div className="h-8 w-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm shrink-0">
@@ -202,7 +194,6 @@ export default function App() {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0 bg-white">
         
-        {/* Chat Top Bar */}
         <div className="h-14 border-b border-slate-100 flex items-center px-6 justify-between shrink-0 shadow-sm shadow-slate-100/40">
           <div className="flex items-center space-x-2">
             <Hash size={20} className="text-slate-400" />
@@ -210,7 +201,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Message Thread */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-8 text-slate-400">
@@ -225,7 +215,6 @@ export default function App() {
                   key={index} 
                   className={`flex flex-col max-w-[75%] ${isMe ? 'ml-auto items-end' : 'mr-auto items-start'}`}
                 >
-                  {/* Meta: Username & Timestamp */}
                   <div className="flex items-baseline space-x-2 mb-1 px-1">
                     <span className="text-xs font-semibold text-slate-700">
                       {isMe ? 'You' : msg.username}
@@ -235,7 +224,6 @@ export default function App() {
                     </span>
                   </div>
 
-                  {/* Message Bubble */}
                   <div 
                     className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words shadow-sm ${
                       isMe 
@@ -252,7 +240,6 @@ export default function App() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Message Input Box Container */}
         <div className="p-4 bg-white border-t border-slate-100 shrink-0">
           <form onSubmit={handleSendMessage} className="relative flex items-center">
             <input
